@@ -160,9 +160,16 @@ function todoFromGcal() {
   var tagId = getCalendarEventTagId();
   for (i = 0; i < events.length; i++) {
     var params = paramsTemplatePost;
-    var priority = "1.5";
-    var checklist = [];
+    var priority = "1.5"; 
     
+    const checkObj = fillChecklist(events[i].getDescription());
+    let checklist = checkObj[0];
+    let description = checkObj[1];
+
+    Logger.log("description: " + events[i].getDescription());
+   
+    Logger.log(checklist);
+
     if (events[i].getTitle().toLowerCase() == "w" || events[i].getTitle() == "") {
      // createMiniTodo(now);
       checklist = [{"text":"[list for work preparedness](https://keep.google.com/#LIST/1OcJJQDA23BG2ivBHPStqjUjNJ5flVU4_3ysDsakK-Z0ranKjstMLLNXWHHOViQ-aM_e0)"},
@@ -170,7 +177,6 @@ function todoFromGcal() {
                    {"text":"no complaints"},
                    {"text":"[list for work completeness](https://keep.google.com/#LIST/1Gswp_OhGoyaj_3wgq3Sggqwd8t97DnH1_l9nXmfq1ablw0nLlal1TYNVRRmRV-CHQ_5V)"},
                    {"text":"did i get out before 10:30"}];
-      Logger.log(events[i].getEndTime().getHours() - events[i].getStartTime().getHours());
       if (events[i].getEndTime().getHours() - events[i].getStartTime().getHours() >= 6) {
         checklist.push({"text":"6hr bonus", "completed": true});
       }
@@ -186,7 +192,7 @@ function todoFromGcal() {
       "priority" : priority,
       "date":  events[i].getEndTime().toISOString(),
       "notes" : "starts at: " + events[i].getStartTime().toLocaleTimeString() + "\n ends at: " + 
-      events[i].getEndTime().toLocaleTimeString() + "\n\n" + events[i].getDescription(),
+      events[i].getEndTime().toLocaleTimeString() + "\n\n" + description,
       "checklist": checklist,
       "tags":[tagId],
       
@@ -210,7 +216,24 @@ function getCalendarEventTagId(){
 
 
 }
-
+function fillChecklist(description){
+    
+    const searchTerm = "checklist:";
+    let checklistArray = [];
+    let result = description.lastIndexOf(searchTerm);
+    //the rest of the code in the if!!
+    let newDescription = description;
+    if (result !== -1){
+      Logger.log("we have a match!");
+      let sub = description.substring(result+searchTerm.length);
+      Logger.log(sub);
+      //remove first element and convert each item seperated by dashes to be checklist item.
+      checklistArray = sub.split("-").map(function(s){ return {"text" : s};}).slice(1); 
+      newDescription = description.substring(0,result);
+    
+    } 
+    return [checklistArray,newDescription];
+}
 
 /*----------------------------------------------------------
 ------------------------tasksAsEmail------------------------
