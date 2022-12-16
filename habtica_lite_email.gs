@@ -21,6 +21,34 @@ var paramsTemplateGet = {
 
 var hr = webScript + '?';
 
+var tagCalendarEvents ="important";
+/*
+    for checklist on events the format is 
+    
+*/
+//-------------------------------------------------
+
+var paramsTemplatePost = {
+  "method" : "post",
+  "contentType": "application/json",
+  "headers" : {
+    "x-api-user" : habId, 
+    "x-api-key" : habToken
+  },
+  "encoding":false,
+  "muteHttpExceptions": true,
+}
+
+var paramsTemplateGet = {
+  "method" : "get",
+  "headers" : {
+    "x-api-user" : habId, 
+    "x-api-key" : habToken
+  },
+}  
+
+var hr = webScript + '?';
+
 //-------------------------------------------------
 
 function cronScript() {
@@ -160,7 +188,7 @@ function todoFromGcal() {
   var tagId = getCalendarEventTagId();
   for (i = 0; i < events.length; i++) {
     var params = paramsTemplatePost;
-    var priority = "1.5"; 
+    var priority = "1"; 
     
     const checkObj = fillChecklist(events[i].getDescription());
     let checklist = checkObj[0];
@@ -228,7 +256,7 @@ function fillChecklist(description){
       let sub = description.substring(result+searchTerm.length);
       Logger.log(sub);
       //remove first element and convert each item seperated by dashes to be checklist item.
-      checklistArray = sub.split("-").map(function(s){ return {"text" : s};}).slice(1); 
+      checklistArray = sub.split("-").map(function(s){ return {"text" : s.replace("<br>","")};}).slice(1); 
       newDescription = description.substring(0,result);
     
     } 
