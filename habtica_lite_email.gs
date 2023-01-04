@@ -21,34 +21,6 @@ var paramsTemplateGet = {
 
 var hr = webScript + '?';
 
-var tagCalendarEvents ="important";
-/*
-    for checklist on events the format is 
-    
-*/
-//-------------------------------------------------
-
-var paramsTemplatePost = {
-  "method" : "post",
-  "contentType": "application/json",
-  "headers" : {
-    "x-api-user" : habId, 
-    "x-api-key" : habToken
-  },
-  "encoding":false,
-  "muteHttpExceptions": true,
-}
-
-var paramsTemplateGet = {
-  "method" : "get",
-  "headers" : {
-    "x-api-user" : habId, 
-    "x-api-key" : habToken
-  },
-}  
-
-var hr = webScript + '?';
-
 //-------------------------------------------------
 
 function cronScript() {
@@ -191,12 +163,8 @@ function todoFromGcal() {
     var priority = "1"; 
     
     const checkObj = fillChecklist(events[i].getDescription());
-    let checklist = checkObj[0];
-    let description = checkObj[1];
-
-    Logger.log("description: " + events[i].getDescription());
-   
-    Logger.log(checklist);
+    let checklist = checkObj.checklist;
+    let description = checkObj.description;
 
     if (events[i].getTitle().toLowerCase() == "w" || events[i].getTitle() == "") {
      // createMiniTodo(now);
@@ -217,7 +185,7 @@ function todoFromGcal() {
     params["payload"] = Utilities.newBlob(JSON.stringify({
       "text" : events[i].getTitle() + " - " + now.toLocaleDateString(), 
       "type" : "todo",
-      "priority" : priority,
+      "priority" : checkObj.diff,
       "date":  events[i].getEndTime().toISOString(),
       "notes" : "starts at: " + events[i].getStartTime().toLocaleTimeString() + "\n ends at: " + 
       events[i].getEndTime().toLocaleTimeString() + "\n\n" + description,
@@ -225,12 +193,10 @@ function todoFromGcal() {
       "tags":[tagId],
       
   }),"application/json");
-    //Logger.log(JSON.stringify(params));
     try {
       var response = UrlFetchApp.fetch("https://habitica.com/api/v3/tasks/user", params);
-      //Logger.log(response.getContentText()); 
     } catch(e) {
-     //Logger.log(e.stack);
+     Logger.log(e.stack);
     }
  
   }
@@ -246,21 +212,54 @@ function getCalendarEventTagId(){
 }
 function fillChecklist(description){
     
-    const searchTerm = "checklist:";
+    
+    let resultObj = {};
+    const diffSTerm = "difficulty: ";
+    Logger.log(description);
+    const diffIx = description.lastIndexOf(diffSTerm);
+    if(diffIx !== -1){
+        let difficultyLine = description.substring(diffIx).split(/\n|<br>|\,/)[0];
+        difficultyLine = difficultyLine.substring(diffSTerm.length).replace(/\s|<\/span>|<br>/,"");
+        Logger.log(difficultyLine);
+
+        if(difficultyLine == "trivial" | difficultyLine == "0.1"){
+            resultObj.diff = 0.1;
+        } else if(difficultyLine == "easy" | difficultyLine == "1"){
+          resultObj.diff = 1;
+        } else if(difficultyLine == "meduim" | difficultyLine == "1.5"){
+            resultObj.diff = 1.5;
+        } else if(difficultyLine == "hard" | difficultyLine == "2"){
+              resultObj.diff = 2;
+        } else {
+          Logger.log("could not parse difficulty string: defaulting to easy");
+          
+          resultObj.diff = 1;
+        }
+        
+    } else {
+        //debug code 
+        Logger.log("didnt find a diffculty property")
+         resultObj.diff = 1;
+    }
+
+
+    const checkSTerm = "checklist:";
     let checklistArray = [];
-    let result = description.lastIndexOf(searchTerm);
+    let checklistIndex = description.lastIndexOf(checkSTerm);
     //the rest of the code in the if!!
     let newDescription = description;
-    if (result !== -1){
-      Logger.log("we have a match!");
-      let sub = description.substring(result+searchTerm.length);
-      Logger.log(sub);
+    if (checklistIndex !== -1){
+      let sub = description.substring(checklistIndex+checkSTerm.length);
       //remove first element and convert each item seperated by dashes to be checklist item.
-      checklistArray = sub.split("-").map(function(s){ return {"text" : s.replace("<br>","")};}).slice(1); 
-      newDescription = description.substring(0,result);
+      resultObj.checklist = sub.split("-").map(function(s){ return {"text" : s.replace("<br>","")};}).slice(1);
     
+    } else {
+      resultObj.checklist = [];
     } 
-    return [checklistArray,newDescription];
+    if (checklistIndex !== -1  | diffIx !== -1){
+      resultObj.description = description.substring(0,Math.min(checklistIndex,diffIx));
+    }
+    return resultObj;
 }
 
 /*----------------------------------------------------------
